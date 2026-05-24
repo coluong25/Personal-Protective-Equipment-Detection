@@ -1,0 +1,10 @@
+# helmet.yaml
+path: ./split
+train: images/train
+val: images/val
+test: images/test
+
+nc: 3 # số class
+names: ["casual_hat", "constructor_hat", "no_helmet"]
+
+task: obb

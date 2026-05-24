@@ -1,0 +1,11 @@
+path: ./split
+train: images/train
+val: images/val
+test: images/test
+
+nc: 3
+names:
+  - bare_head
+  - constructor_hat
+  - non_safety_hat
+cls_weights: [3.0, 1.0, 1.5]

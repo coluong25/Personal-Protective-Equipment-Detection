@@ -1,0 +1,99 @@
+1. Verify Split Data
+Trước khi train, kiểm tra lại split có đúng tỉ lệ và không bị leak không.
+
+import os
+from pathlib import Path
+
+def verify_split(data_root: str):
+    splits = ["train", "val", "test"]
+    for split in splits:
+        img_dir = Path(data_root) / split / "images"
+        lbl_dir = Path(data_root) / split / "labels"
+        
+        imgs = list(img_dir.glob("*"))
+        lbls = list(lbl_dir.glob("*.txt"))
+        
+        # Kiểm tra số ảnh và label phải khớp nhau
+        print(f"{split}: {len(imgs)} images, {len(lbls)} labels")
+        assert len(imgs) == len(lbls), f"Mismatch in {split}!"
+
+verify_split("datasets/helmet")
+
+
+2. Tạo dataset.yaml
+
+# helmet.yaml
+path: datasets/helmet
+train: train/images
+val: val/images
+test: test/images
+
+nc: 2  # số class
+names: ["helmet", "no_helmet"]
+
+
+3. Chọn model và Train
+Với helmet detection, YOLOv8 là lựa chọn phổ biến nhất hiện tại.
+
+
+from ultralytics import YOLO
+
+# Load pretrained model (transfer learning)
+model = YOLO("yolov8s.pt")  # s = small, cân bằng tốc độ/độ chính xác
+
+model.train(
+    data="helmet.yaml",
+    epochs=50,
+    imgsz=640,
+    batch=16,
+    patience=10,        # early stopping nếu không cải thiện sau 10 epoch
+    device=0,           # GPU 0, dùng "cpu" nếu không có GPU
+    project="runs/helmet",
+    name="exp1",
+)
+
+4. Evaluate model
+
+# Đánh giá trên tập val/test
+metrics = model.val(data="helmet.yaml", split="test")
+
+# Các chỉ số quan trọng cần xem
+print(f"mAP50:     {metrics.box.map50:.3f}")   # mean Average Precision @ IoU 0.5
+print(f"mAP50-95:  {metrics.box.map:.3f}")     # mAP trung bình nhiều ngưỡng IoU
+print(f"Precision: {metrics.box.mp:.3f}")
+print(f"Recall:    {metrics.box.mr:.3f}")
+
+
+5. Inference thực tế
+
+# Test trên ảnh mới
+results = model.predict(
+    source="test_images/",
+    conf=0.5,           # ngưỡng confidence tối thiểu
+    iou=0.45,           # ngưỡng NMS (Non-Maximum Suppression)
+    save=True,          # lưu ảnh kết quả
+)
+
+
+
+
+Bước 1: Chuẩn bị Data
+Bước 2: Dataset & Dataloader
+Bước 3: Augmentation Pipeline
+Bước 4: Model
+Bước 5: Training Loop
+Bước 6: Evaluation Loop
+Bước 7: Export ONNX
+Bước 8: Verify ONNX
+Bước 9: API Layer
+
+=>
+✅ Bước 1: Label (Roboflow)
+✅ Bước 2: Split (split_dataset_stratified)
+⬅️ Bạn đang ở đây
+─────────────────────────────────
+📄 Bước 3: Tạo data.yaml
+🏋️ Bước 4: Train YOLOv8
+📊 Bước 5: Evaluation
+📦 Bước 6: Export ONNX
+🔌 Bước 7: API Layer
