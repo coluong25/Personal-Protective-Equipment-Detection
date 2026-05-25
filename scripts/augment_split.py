@@ -1,10 +1,10 @@
 """
-Augment ảnh cho class casual_hat (class index cần khớp với helmet.yaml của bạn)
+Augment ảnh cho class bare_head (class index cần khớp với data.yaml của bạn)
 Cấu trúc thư mục:
   pj/split/images/train/
   pj/split/labels/train/
 
-Chạy: python augment_casual_hat.py
+Chạy: python augment_bare_head.py
 """
 
 import cv2
@@ -14,16 +14,16 @@ from pathlib import Path
 import albumentations as A  # pip install albumentations
 
 # ─── CẤU HÌNH ────────────────────────────────────────────────────────────────
-PROJECT_ROOT   = Path(r"C:\0\Project\01\Personal Protective Equipment Detection")
+PROJECT_ROOT   = Path(__file__).resolve().parent.parent
 SPLIT_DIR      = PROJECT_ROOT / "split"
 TRAIN_IMG_DIR  = SPLIT_DIR / "images" / "train"
 TRAIN_LBL_DIR  = SPLIT_DIR / "labels" / "train"
 
-CASUAL_HAT_CLASS_ID = 0        # ← Kiểm tra lại trong helmet.yaml của bạn
+TARGET_CLASS_ID = 0        
 BACKGROUND_CLASS_ID = None     # class nào là background nếu có, None nếu không
 
-TARGET_COUNT   = 60            # số ảnh casual_hat muốn có sau augment
-COPY_PASTE_N   = 20            # số ảnh copy-paste tạo thêm
+TARGET_COUNT   = 600              
+COPY_PASTE_N   = 50            # số ảnh copy-paste tạo thêm
 # ─────────────────────────────────────────────────────────────────────────────
 
 def read_yolo_label(label_path: Path):
@@ -64,30 +64,22 @@ def obb_to_pixel(points, img_w, img_h):
     ys = [points[i] * img_h for i in range(1, 8, 2)]  # index 1,3,5,7 → nhân với height
     return [int(min(xs)), int(min(ys)), int(max(xs)), int(max(ys))]
 
-
 def write_yolo_label(label_path: Path, boxes: list):
-    """Ghi OBB format: class x1y1 x2y2 x3y3 x4y4 (9 phần tử)"""
     lines = []
     for b in boxes:
-        cid, cx, cy, w, h = b[0], b[1], b[2], b[3], b[4]
-        x1, y1 = cx - w/2, cy - h/2
-        x2, y2 = cx + w/2, cy - h/2
-        x3, y3 = cx + w/2, cy + h/2
-        x4, y4 = cx - w/2, cy + h/2
-        lines.append(
-            f"{cid} {x1:.6f} {y1:.6f} {x2:.6f} {y2:.6f} "
-            f"{x3:.6f} {y3:.6f} {x4:.6f} {y4:.6f}"
-        )
+        # b có thể là 5 phần tử (YOLO) hoặc 9 phần tử (OBB)
+        vals = " ".join(f"{v:.6f}" for v in b[1:])
+        lines.append(f"{int(b[0])} {vals}")
     label_path.write_text("\n".join(lines))
     
-def find_casual_hat_images():
+def find_bare_head_images():
     result = []
     for img_path in TRAIN_IMG_DIR.glob("*.*"):
         if img_path.suffix.lower() not in {".jpg", ".jpeg", ".png"}:
             continue
         lbl_path = TRAIN_LBL_DIR / (img_path.stem + ".txt")
         boxes = read_yolo_label(lbl_path)
-        casual_boxes = [b for b in boxes if b[0] == CASUAL_HAT_CLASS_ID]
+        casual_boxes = [b for b in boxes if b[0] == TARGET_CLASS_ID]
         if casual_boxes:
             result.append((img_path, lbl_path, boxes))
     return result
@@ -118,7 +110,7 @@ def pascal_to_yolo(box, img_w, img_h):
     return [cx, cy, w, h]
 
 
-# ─── PHẦN 1: AUGMENT TRỰC TIẾP ảnh gốc casual_hat ───────────────────────────
+# ─── PHẦN 1: AUGMENT TRỰC TIẾP ảnh gốc bare_head ───────────────────────────
 
 # Pipeline augmentation — giữ bối cảnh thực tế công trường
 direct_aug = A.Compose(
@@ -129,58 +121,68 @@ direct_aug = A.Compose(
         A.GaussNoise(p=0.3),
         A.MotionBlur(blur_limit=5, p=0.2),
         A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.2, rotate_limit=10, p=0.7),
-        A.RandomShadow(p=0.3),          # giả lập bóng đổ công trường
-        A.CLAHE(p=0.2),                 # CLAHE (Contrast Limited Adaptive Histogram Equalization) — tăng độ rõ vùng tối
+        A.RandomShadow(p=0.3),
+        A.CLAHE(p=0.2),
     ],
-    bbox_params=A.BboxParams(
-        format="yolo",                  # bbox đầu vào/ra đều là YOLO format
-        label_fields=["class_ids"],
-        min_visibility=0.3,             # loại bbox bị che >70%
+    # Dùng keypoint thay vì bbox để giữ 4 góc OBB
+    keypoint_params=A.KeypointParams(
+        format="xy",           # mỗi keypoint là (x, y) pixel tuyệt đối
     ),
 )
 
 
 
 def augment_direct(casual_images: list, target: int):
-    
-    """Tạo ảnh augment trực tiếp từ ảnh gốc casual_hat"""
     generated = 0
     idx = 0
     total_needed = target - len(casual_images)
-    print(f"\n[DIRECT AUG] Cần tạo thêm {total_needed} ảnh từ {len(casual_images)} ảnh gốc")
+    MAX_ATTEMPTS = total_needed * 10          # ← phải khai báo TRƯỚC while
+    print(f"\n[DIRECT AUG] Cần tạo thêm {total_needed} ảnh")
 
-    while generated < total_needed:
+    while generated < total_needed and idx < MAX_ATTEMPTS:
         img_path, lbl_path, boxes = casual_images[idx % len(casual_images)]
         img = cv2.imread(str(img_path))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         h, w = img.shape[:2]
 
-        bboxes    = [obb_to_aabb(b[1:]) for b in boxes]
-        class_ids = [b[0] for b in boxes]
-        valid = [
-        (bb, cid) for bb, cid in zip(bboxes, class_ids)
-        # cx+w/2 <= 1 và cy+h/2 <= 1
-        if bb[0] + bb[2]/2 <= 1.0 and bb[1] + bb[3]/2 <= 1.0
-        and bb[2] > 0 and bb[3] > 0   # ← thêm dòng này
+        keypoints = []
+        box_meta  = []
+        for b in boxes:
+            cid = b[0]
+            coords = b[1:]
+            for i in range(4):
+                kp_x = coords[i*2]     * w
+                kp_y = coords[i*2 + 1] * h
+                keypoints.append((kp_x, kp_y))
+            box_meta.append(cid)
 
-        ]
-        bboxes, class_ids = zip(*valid) if valid else ([], [])
-        if valid:
-            bboxes, class_ids = zip(*valid)
-            bboxes = list(bboxes)
-            class_ids = list(class_ids)
-        else:
-            bboxes, class_ids = [], []
-    # Thêm dòng này vào đầu augment_direct(), trước khi gọi direct_aug
         try:
-            augmented  = direct_aug(image=img, bboxes=bboxes, class_ids=class_ids)
-            aug_img    = cv2.cvtColor(augmented["image"], cv2.COLOR_RGB2BGR)
-            aug_boxes  = [
-                [cid] + list(bb)
-                for cid, bb in zip(augmented["class_ids"], augmented["bboxes"])
-            ]
+            augmented    = direct_aug(image=img, keypoints=keypoints)
+            aug_img      = cv2.cvtColor(augmented["image"], cv2.COLOR_RGB2BGR)
+            aug_kps      = augmented["keypoints"]
+            aug_h, aug_w = aug_img.shape[:2]
 
-            # Đặt tên file mới tránh trùng
+            aug_boxes = []
+            for bi, cid in enumerate(box_meta):
+                corners = aug_kps[bi*4 : bi*4 + 4]
+                if len(corners) < 4:
+                    continue
+                norm_coords = []
+                for (kx, ky) in corners:
+                    nx = max(0.0, min(1.0, kx / aug_w))
+                    ny = max(0.0, min(1.0, ky / aug_h))
+                    norm_coords.extend([nx, ny])
+                xs = norm_coords[0::2]
+                ys = norm_coords[1::2]
+                area = (max(xs)-min(xs)) * (max(ys)-min(ys))
+                if area < 0.001:
+                    continue
+                aug_boxes.append([cid] + norm_coords)
+
+            if not aug_boxes:             # ← check TRONG try, TRƯỚC khi ghi file
+                idx += 1
+                continue
+
             new_stem  = f"{img_path.stem}_daug_{generated:04d}"
             new_img_p = TRAIN_IMG_DIR / f"{new_stem}.jpg"
             new_lbl_p = TRAIN_LBL_DIR / f"{new_stem}.txt"
@@ -189,6 +191,7 @@ def augment_direct(casual_images: list, target: int):
             write_yolo_label(new_lbl_p, aug_boxes)
             generated += 1
             print(f"  ✓ {new_img_p.name}")
+
         except Exception as e:
             print(f"  ✗ Lỗi: {e}")
 
@@ -197,13 +200,13 @@ def augment_direct(casual_images: list, target: int):
     print(f"[DIRECT AUG] Hoàn thành: +{generated} ảnh")
 
 
-def get_casual_hat_crops(casual_images: list):
+def get_bare_head_crops(casual_images: list):
     crops = []
     for img_path, _, boxes in casual_images:
         img = cv2.imread(str(img_path))
         h, w = img.shape[:2]
         for b in boxes:
-            if b[0] != CASUAL_HAT_CLASS_ID:
+            if b[0] != TARGET_CLASS_ID:
                 continue
             aabb = obb_to_aabb(b[1:])          # OBB → AABB normalized
             x1, y1, x2, y2 = yolo_to_pascal(aabb, w, h)  # → pixel
@@ -214,8 +217,8 @@ def get_casual_hat_crops(casual_images: list):
 
 def find_background_images(casual_stems: set):
     """
-    Tìm ảnh công trường không có casual_hat để làm background copy-paste
-    casual_stems: tên file ảnh gốc casual_hat — tránh paste vào chính nó
+    Tìm ảnh công trường không có bare_head để làm background copy-paste
+    casual_stems: tên file ảnh gốc bare_head — tránh paste vào chính nó
     """
     backgrounds = []
     for img_path in TRAIN_IMG_DIR.glob("*.*"):
@@ -225,18 +228,13 @@ def find_background_images(casual_stems: set):
             continue
         lbl_path = TRAIN_LBL_DIR / (img_path.stem + ".txt")
         boxes    = read_yolo_label(lbl_path)
-        # Chỉ lấy ảnh KHÔNG có casual_hat
-        has_casual = any(b[0] == CASUAL_HAT_CLASS_ID for b in boxes)
+        # Chỉ lấy ảnh KHÔNG có bare_head
+        has_casual = any(b[0] == TARGET_CLASS_ID for b in boxes)
         if not has_casual:
             backgrounds.append((img_path, lbl_path, boxes))
     return backgrounds
 
-
 def paste_crop_on_background(bg_img, crop, bg_boxes, scale_range=(0.08, 0.18)):
-    """
-    Dán crop lên vị trí ngẫu nhiên trong bg_img
-    scale_range: crop sẽ chiếm bao nhiêu % chiều cao ảnh background
-    """
     bg_h, bg_w = bg_img.shape[:2]
     target_h   = int(bg_h * np.random.uniform(*scale_range))
     ratio      = target_h / max(crop.shape[0], 1)
@@ -247,9 +245,8 @@ def paste_crop_on_background(bg_img, crop, bg_boxes, scale_range=(0.08, 0.18)):
 
     resized = cv2.resize(crop, (target_w, target_h))
 
-    # Chọn vị trí paste ngẫu nhiên — ưu tiên nửa trên (đầu người thường ở trên)
     max_x = bg_w - target_w
-    max_y = int(bg_h * 0.6) - target_h   # giới hạn ở 60% chiều cao
+    max_y = int(bg_h * 0.6) - target_h
     if max_x <= 0 or max_y <= 0:
         return bg_img, bg_boxes, False
 
@@ -257,17 +254,22 @@ def paste_crop_on_background(bg_img, crop, bg_boxes, scale_range=(0.08, 0.18)):
     py = np.random.randint(0, max(1, max_y))
 
     result = bg_img.copy()
-    result[py:py+target_h, px:px+target_w] = resized   # ghi đè vùng background
+    result[py:py+target_h, px:px+target_w] = resized
 
-    new_box_yolo = pascal_to_yolo([px, py, px+target_w, py+target_h], bg_w, bg_h)
-    new_box      = [CASUAL_HAT_CLASS_ID] + new_box_yolo
+    # ✅ Thay đoạn cũ (5 phần tử) bằng OBB 9 phần tử
+    cx, cy, w, h = pascal_to_yolo([px, py, px+target_w, py+target_h], bg_w, bg_h)
+    x1, y1 = cx - w/2, cy - h/2
+    x2, y2 = cx + w/2, cy - h/2
+    x3, y3 = cx + w/2, cy + h/2
+    x4, y4 = cx - w/2, cy + h/2
+    new_box = [TARGET_CLASS_ID, x1,y1, x2,y2, x3,y3, x4,y4]
 
     return result, bg_boxes + [new_box], True
 
 
 def augment_copy_paste(casual_images: list, backgrounds: list, n: int):
     """Tạo n ảnh copy-paste"""
-    crops = get_casual_hat_crops(casual_images)
+    crops = get_bare_head_crops(casual_images)
     if not crops:
         print("[COPY-PASTE] Không tìm thấy crop nào!")
         return
@@ -302,14 +304,14 @@ def augment_copy_paste(casual_images: list, backgrounds: list, n: int):
 
 def main():
     print("=" * 60)
-    print("AUGMENT casual_hat — Direct + Copy-Paste")
+    print("AUGMENT bare_head — Direct + Copy-Paste")
     print("=" * 60)
 
-    casual_images = find_casual_hat_images()
-    print(f"Tìm thấy {len(casual_images)} ảnh gốc có casual_hat")
+    casual_images = find_bare_head_images()
+    print(f"Tìm thấy {len(casual_images)} ảnh gốc có bare_head")
 
     if not casual_images:
-        print("❌ Không tìm thấy ảnh casual_hat! Kiểm tra lại CASUAL_HAT_CLASS_ID")
+        print("❌ Không tìm thấy ảnh bare_head! Kiểm tra lại TARGET_CLASS_ID")
         return
 
     # Phần 1: Direct augmentation
@@ -320,7 +322,7 @@ def main():
     backgrounds  = find_background_images(casual_stems)
     augment_copy_paste(casual_images, backgrounds, n=COPY_PASTE_N)
 
-    print("\n✅ Xong! Train lại model và so sánh AP50 casual_hat.")
+    print("\n✅ Xong! Train lại model và so sánh AP50 bare_head.")
 
 
 if __name__ == "__main__":
