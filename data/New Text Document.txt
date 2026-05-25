@@ -1,4 +1,0 @@
-Trình tự xử lý
-1 raw
-2 annotated
-3 processed
