@@ -1,4 +1,0 @@
-Distrubut Focal(tiêu điểm) Loss
-chia hình thành nhiều grid (ô vuông)
-cái nào chưa box lấy anchor là điểm giữa ô vuông đó rồi 
-học xác suất % để điểm giữa tới box đó

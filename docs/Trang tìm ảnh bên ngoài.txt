@@ -1,5 +1,0 @@
-Pexels
-Unsplash
-
-Tool
-Roboflow
