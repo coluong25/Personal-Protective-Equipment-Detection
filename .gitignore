@@ -2,12 +2,8 @@ data/
 split/
 models/
 outputs/
-<<<<<<< HEAD
 docs/
 tests/
-=======
-
->>>>>>> bcb49c75a7af3c439a336bf3b145f54dbbf9cf76
 # Augmented data — sinh lại bằng script
 *_daug_*.jpg
 *_daug_*.txt
