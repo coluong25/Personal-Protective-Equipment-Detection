@@ -1,3 +1,14 @@
-models/pretrained/
-models/checkpoints/
-models/final/
+data/
+split/
+models/
+outputs/
+
+# Augmented data — sinh lại bằng script
+*_daug_*.jpg
+*_daug_*.txt
+*_cp_*.jpg
+*_cp_*.txt
+
+# Model weights
+*.pt
+*.onnx

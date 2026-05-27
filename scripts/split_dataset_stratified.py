@@ -13,12 +13,13 @@ def get_class_vector(label_path: Path, num_classes: int = 3) -> list[int] | None
     Output: [1, 1, 0]  — ảnh có class 0 và 1, không có class 2
     """
     lines = [l.strip() for l in label_path.read_text().splitlines() if l.strip()]
+    # [OBB label1, label2]
     if not lines:
         return None
 
     present = {int(l.split()[0]) for l in lines}
     return [1 if i in present else 0 for i in range(num_classes)]
-
+# Strat split cần vị trí cố định => vector(thứ tự vào)
 
 def split_dataset_multilabel(
     img_dir: Path = ROOT / "data" / "annotated" / "images",
@@ -34,13 +35,13 @@ def split_dataset_multilabel(
     # ── 1. Build pairs + label matrix ───────────────────────────────
     paired, label_matrix = [], []
 
-    for img_path in sorted(img_dir.iterdir()):
-        lbl_path = lbl_dir / (img_path.stem + ".txt")
+    for img_path in sorted(img_dir.iterdir()): # iterdir duyệt file bên trong thư mục
+        lbl_path = lbl_dir / (img_path.stem + ".txt") #=> path.steam lấy tên không đuôi
         if not lbl_path.exists():
-            print(f"[SKIP] Không có label: {lbl_path.name}")
+            print(f"[SKIP] Không có label: {lbl_path.name}") # => lấy tên có đuôi
             continue
 
-        vec = get_class_vector(lbl_path, num_classes)
+        vec = get_class_vector(lbl_path, num_classes) # => list class theo thứ tự
         if vec is None:
             print(f"[SKIP] Không có annotation: {lbl_path.name}")
             continue
@@ -48,8 +49,8 @@ def split_dataset_multilabel(
         paired.append(img_path.name)
         label_matrix.append(vec)
 
-    X = np.array(paired)
-    y = np.array(label_matrix)
+    X = np.array(paired) # => tên ảnh 
+    y = np.array(label_matrix) # => [[0,0,1], [1,1,1]]
     print(f"✅ Tổng ảnh hợp lệ: {len(X)}")
 
     # ── 2. Tách train / temp ─────────────────────────────────────────
