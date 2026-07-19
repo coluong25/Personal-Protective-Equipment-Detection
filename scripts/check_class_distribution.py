@@ -48,15 +48,32 @@ def check_class_distribution(split_root: str | Path, class_names: list[str]):
     plt.suptitle("Class Distribution across Splits", fontweight="bold")
     plt.tight_layout()
 
-    # Sửa typo + mkdir
-    save_path = split_root.parent / "data" / "split_distribution" / "class_distribution.png"
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(save_path, dpi=150)
+    out_dir = split_root.parent / "split_distribution"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    png_path = out_dir / "class_distribution.png"
+    plt.savefig(png_path, dpi=150)
     plt.show()
-    print(f"\n✅ Đã lưu biểu đồ: {save_path}")
+    print(f"\n✅ Đã lưu biểu đồ : {png_path}")
+
+    lines = ["Class Distribution across Splits", "=" * 50]
+    for split in splits:
+        counter = results[split]
+        total = sum(counter.values())
+        n_images = sum(1 for _ in (split_root / "labels" / split).glob("*.txt"))
+        lines.append(f"\n{split.upper()} ({n_images} images, {total} instances)")
+        lines.append("-" * 40)
+        for class_id in sorted(counter):
+            name = class_names[class_id] if class_id < len(class_names) else f"class_{class_id}"
+            ratio = counter[class_id] / total * 100
+            lines.append(f"  {name:<20}: {counter[class_id]:>5}  ({ratio:.1f}%)")
+
+    txt_path = out_dir / "class_distribution.txt"
+    txt_path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"✅ Đã lưu số liệu  : {txt_path}")
 
 
 check_class_distribution(
-    split_root=Path(__file__).resolve().parent.parent / "split",  
-    class_names=["bare_head", "constructor_hat", "non_safety_hat"]
+    split_root=Path(__file__).resolve().parent.parent / "data" / "split",  
+    class_names=["bare_head", "constructor_hat", "wrong_headgear_type"]
 )

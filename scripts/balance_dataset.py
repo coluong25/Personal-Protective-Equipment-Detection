@@ -5,11 +5,11 @@ from collections import Counter
 
 RANDOM_SEED = 42
 TARGET_COUNTS = {
-    "train": {"bare_head": 57, "constructor_hat": 200, "non_safety_hat": 162},
-    "val":   {"bare_head": 25, "constructor_hat": 80,  "non_safety_hat": 45},
-    "test":  {"bare_head": 17, "constructor_hat": 80,  "non_safety_hat": 64},
+    "train": {"bare_head": 57, "constructor_hat": 200, "wrong_headgear_type": 162},
+    "val":   {"bare_head": 25, "constructor_hat": 80,  "wrong_headgear_type": 45},
+    "test":  {"bare_head": 17, "constructor_hat": 80,  "wrong_headgear_type": 64},
 }
-CLASS_NAMES = {0: "bare_head", 1: "constructor_hat", 2: "non_safety_hat"}
+CLASS_NAMES = {0: "bare_head", 1: "constructor_hat", 2: "wrong_headgear_type"}
 DATASET_ROOT = Path(__file__).resolve().parent.parent / "split"
 
 

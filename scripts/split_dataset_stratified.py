@@ -7,15 +7,16 @@ ROOT = Path(__file__).resolve().parent.parent
 # pj/scripts/strat_split.py → .parent.parent = pj/
 
 
-def get_class_vector(label_path: Path, num_classes: int = 3) -> list[int] | None:
+def get_class_vector(label_path: Path, num_classes: int = 3) -> list[int]:
     """
     Input : pj/data/annotated/labels/anh1.txt
     Output: [1, 1, 0]  — ảnh có class 0 và 1, không có class 2
+            [0, 0, 0]  — label trống = background sample (mũ không có người)
     """
     lines = [l.strip() for l in label_path.read_text().splitlines() if l.strip()]
     # [OBB label1, label2]
     if not lines:
-        return None
+        return [0] * num_classes  # background: giữ ảnh, label trống
 
     present = {int(l.split()[0]) for l in lines}
     return [1 if i in present else 0 for i in range(num_classes)]
@@ -24,7 +25,7 @@ def get_class_vector(label_path: Path, num_classes: int = 3) -> list[int] | None
 def split_dataset_multilabel(
     img_dir: Path = ROOT / "data" / "annotated" / "images",
     lbl_dir: Path = ROOT / "data" / "annotated" / "labels",
-    out_dir: Path = ROOT / "split",
+    out_dir: Path = ROOT /"data"/ "split",
     train_ratio: float = 0.6,
     val_ratio: float = 0.2,
     num_classes: int = 3,
@@ -42,9 +43,8 @@ def split_dataset_multilabel(
             continue
 
         vec = get_class_vector(lbl_path, num_classes) # => list class theo thứ tự
-        if vec is None:
-            print(f"[SKIP] Không có annotation: {lbl_path.name}")
-            continue
+        if all(v == 0 for v in vec):
+            print(f"[BG]   Label trống (background): {lbl_path.name}")
 
         paired.append(img_path.name)
         label_matrix.append(vec)

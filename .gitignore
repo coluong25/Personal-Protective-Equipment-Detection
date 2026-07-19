@@ -4,6 +4,8 @@ models/
 outputs/
 docs/
 tests/
+temp/
+.claude/
 # Augmented data — sinh lại bằng script
 *_daug_*.jpg
 *_daug_*.txt

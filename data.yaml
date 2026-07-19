@@ -1,11 +1,11 @@
-path: ./split
+path: ./data/split
 train: images/train
 val: images/val
 test: images/test
 
 nc: 3
 names:
-  - bare_head
-  - constructor_hat
-  - non_safety_hat
-cls_weights: [3.0, 1.0, 1.5]
+  - bare_head # Hair and nearby skin if hair is not covered \ bald
+  - constructor_hat # Hard plastic shell with a wide brim, no ventilation holes, smooth dome top
+  - wrong_headgear_type # Head wearing a regular hat (cap, beanie, etc.)
+cls_weights: [1.0, 1.2, 1.4]

@@ -11,7 +11,7 @@ from collections import Counter
 # ─── CONFIG ────────────────────────────────────────────────
 ROOT = Path(__file__).resolve().parent.parent
 SPLIT_ROOT = ROOT /"split"        
-CLASS_NAMES = ["bare_head", "constructor_hat", "non_safety_hat"] 
+CLASS_NAMES = ["bare_head", "constructor_hat", "wrong_headgear_type"]
 SPLITS      = ["train", "val", "test"]
 # ───────────────────────────────────────────────────────────
 
