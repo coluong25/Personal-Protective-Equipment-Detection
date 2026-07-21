@@ -1,11 +1,11 @@
 data/
-split/
 models/
 outputs/
 docs/
-tests/
 temp/
 .claude/
+.vscode/
+
 # Augmented data — sinh lại bằng script
 *_daug_*.jpg
 *_daug_*.txt
@@ -15,3 +15,12 @@ temp/
 # Model weights
 *.pt
 *.onnx
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Test output (ảnh tạm khi chạy test_api.py)
+tests/output_annotated.jpg

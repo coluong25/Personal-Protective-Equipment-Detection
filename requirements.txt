@@ -1,4 +1,7 @@
-# requirements.txt — inference
+# requirements.txt — API + inference
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
 torch>=2.6.0
 torchvision>=0.21.0
 ultralytics>=8.3.0

@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount model weights từ ngoài — không bake vào image
+      - ./models/final:/app/models/final:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped

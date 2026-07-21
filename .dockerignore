@@ -1,0 +1,14 @@
+data/
+outputs/
+models/checkpoints/
+models/tune/
+models/export/
+models/final/
+scripts/
+tests/
+notebooks/
+.git/
+__pycache__/
+*.pyc
+*.pth
+*.onnx
