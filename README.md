@@ -1,66 +1,59 @@
-## PPE Detection — Pretrained Model
+## PPE Detection API
 
-### Setup
+YOLOv8m-OBB model for detecting Personal Protective Equipment (hard hats, wrong headgear).
 
-1. Clone the repository:
+### Quick Start
+
+1. Clone & install:
    ```bash
    git clone https://github.com/coluong25/Personal-Protective-Equipment-Detection.git
    cd Personal-Protective-Equipment-Detection
-   ```
-
-2. Create and activate environment:
-   ```bash
    conda create -n ppe-detect python=3.10
    conda activate ppe-detect
    pip install -r requirements.txt
    ```
 
-3. Download the pretrained model and place it in `models/final/`:
-   [Google Drive — model](https://drive.google.com/drive/folders/1RAe0WY32povuZAXzHA0VJLdTCOZRDkLm)
+2. [Download the pretrained model](https://drive.google.com/drive/folders/1RAe0WY32povuZAXzHA0VJLdTCOZRDkLm) and place it at `models/final/`.
 
-4. Place your images in `data/test/images/`
-   (or use the provided test set: [Google Drive — test data](https://drive.google.com/drive/folders/19XcQr78xkkTVzqFxQcCNNh9BqE2QMm5p))
+3. Run:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
 
-### Run
+### API Endpoints
 
-```bash
-python src/test_external.py
-```
+| Method | Endpoint | Input | Output |
+|--------|----------|-------|--------|
+| GET | `/health` | — | model status |
+| POST | `/predict/json` | image file | JSON detections |
+| POST | `/predict/view` | image file | annotated JPEG |
+| POST | `/predict/base64/json` | `{"image_base64": "..."}` | JSON detections |
 
-Results are saved to `outputs/test_external/`.
+Swagger UI available at `http://localhost:8000/docs`.
 
 ### Config
 
-Both settings are in `src/test_external.py`.
+Edit thresholds in `src/test_external.py`:
 
-**`CLASS_CONF`** — confidence threshold per class:
 ```python
 CLASS_CONF = {
-    0: 0.2,   # bare_head       — raise to reduce false alarms
-    1: 0.62,  # constructor_hat — lower to catch more helmets
+    0: 0.2,   # bare_head
+    1: 0.62,  # constructor_hat
     2: 0.56,  # wrong_headgear_type
-}
-```
-
-**`CLASS_PRIORITY`** — tiebreaker when two boxes overlap with similar confidence:
-```python
-CLASS_PRIORITY = {
-    0: 1,  # bare_head       — lowest priority
-    1: 3,  # constructor_hat — highest priority
-    2: 2,  # wrong_headgear_type
 }
 ```
 
 ### Limitations
 
-- `wrong_headgear_type` includes many hat types (e.g. bicycle helmets vs. hard hats) — class ambiguity
+- `wrong_headgear_type` covers many hat types — class ambiguity
 - Weaker on small/distant objects
+- Static class weights in `data.yaml` — not flexible when class sample or data distribution changes
 
 ### Future Work
 
 - Split `wrong_headgear_type` into more specific subclasses
-- Apply SAHI (slicing inference) and higher input resolution (1280px) to improve detection of small/distant objects
+- Apply SAHI + higher resolution (1280px) for small object detection
 
 ---
 
-Raw dataset: https://app.roboflow.com/ds/mbshq5SS7k?key=Px0FUE856s
+> Training data: [Roboflow](https://app.roboflow.com/ds/mbshq5SS7k?key=Px0FUE856s)

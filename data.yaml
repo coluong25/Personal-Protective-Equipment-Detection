@@ -8,4 +8,4 @@ names:
   - bare_head # Hair and nearby skin if hair is not covered \ bald
   - constructor_hat # Hard plastic shell with a wide brim, no ventilation holes, smooth dome top
   - wrong_headgear_type # Head wearing a regular hat (cap, beanie, etc.)
-cls_weights: [1.0, 1.2, 1.4]
+cls_weights: [1.0, 1.2, 1.4] # Trong trường hợp dataset đã cố định, cần cải thiện

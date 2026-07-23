@@ -14,11 +14,10 @@ class PredictJsonResponse(BaseModel):
     model_name: str
 
 
-class PredictImageResponse(BaseModel):
-    image_base64: str               # JPEG đã vẽ OBB, encode base64
-    detections:   list[DetectionItem]
-    count:        int
-    model_name:   str
+class PredictBase64Request(BaseModel):
+    image_base64: str  # ảnh JPEG/PNG đã encode base64
+
+    model_config = {"json_schema_extra": {"example": {"image_base64": "<base64 string>"}}}
 
 
 class HealthResponse(BaseModel):

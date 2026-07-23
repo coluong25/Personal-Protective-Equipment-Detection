@@ -6,6 +6,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libglib2.0-0 \
         libgomp1 \
+        libxcb1 \
+        libgl1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements trước để tận dụng layer cache khi chỉ thay code
