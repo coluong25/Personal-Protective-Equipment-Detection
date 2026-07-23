@@ -2,6 +2,8 @@
 
 YOLOv8m-OBB model for detecting Personal Protective Equipment (hard hats, wrong headgear).
 
+> mAP50: **0.777** · mAP50-95: **0.639** (3 classes)
+
 ### Quick Start
 
 1. Clone & install:
